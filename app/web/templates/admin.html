@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Review & AI Supervisory Dashboard - UniSync{% endblock %}
+
+{% block content %}
+<div class="container admin-container">
+    <!-- Admin Header -->
+    <div class="admin-header-flex">
+        <div>
+            <div class="badge-subhead">System Architecture · Dual-Agent Control Panel</div>
+            <h1>Admin Review & AI Audit Queue</h1>
+            <p class="admin-subtitle">
+                Supervisory interface showing how <strong>Agent 2 (Review Agent)</strong> audits and assists <strong>Agent 1 (Discovery Agent)</strong>.
+            </p>
+        </div>
+
+        <div class="admin-header-actions">
+            <button id="btnRunPipeline" class="btn btn-primary" onclick="triggerScrapePipeline()">
+                ⚡ Run Web Scraper & Dual-Agent Pipeline Now
+            </button>
+        </div>
+    </div>
+
+    <!-- Live Execution Status Banner (hidden by default) -->
+    <div id="pipelineStatusBanner" class="pipeline-status-banner" style="display: none;">
+        <div class="spinner"></div>
+        <div class="status-content">
+            <strong id="statusTitle">Running AI Multi-Agent Pipeline...</strong>
+            <p id="statusMsg">BeautifulSoup scraping sources -> Agent 1 structuring -> Verifier checks -> Agent 2 audit.</p>
+        </div>
+    </div>
+
+    <!-- Overview Metrics Cards -->
+    <div class="admin-metrics-grid">
+        <div class="admin-metric-card">
+            <div class="metric-num">{{ total_active }}</div>
+            <div class="metric-title">Active Live Resources</div>
+            <div class="metric-sub">Visible to RGUKT students</div>
+        </div>
+        <div class="admin-metric-card {% if total_flagged > 0 %}metric-alert{% endif %}">
+            <div class="metric-num">{{ total_flagged }}</div>
+            <div class="metric-title">Proposals Flagged for Review</div>
+            <div class="metric-sub">Pending human confirmation</div>
+        </div>
+        <div class="admin-metric-card">
+            <div class="metric-num">{{ all_proposals | length }}</div>
+            <div class="metric-title">Total Audit Entries</div>
+            <div class="metric-sub">AI decisions logged</div>
+        </div>
+    </div>
+
+    <!-- Section 1: Flagged Proposals (Agent 2 Review Queue) -->
+    <section class="admin-section">
+        <div class="section-title-wrap">
+            <h2>🚨 Flagged Proposals Awaiting Human Review ({{ total_flagged }})</h2>
+            <p>These notices were parsed by Agent 1, but flagged by Agent 2 due to potential conflicts, past dates, or ambiguity.</p>
+        </div>
+
+        {% if flagged %}
+            <div class="flagged-cards-list">
+                {% for item in flagged %}
+                    {% set draft = item.draft_json | parse_json %}
+                    <div class="flagged-card">
+                        <div class="flagged-card-header">
+                            <span class="badge badge-action badge-{{ item.action }}">Action: {{ item.action | upper }}</span>
+                            <span class="badge badge-verdict-flag">Agent 2 Verdict: FLAGGED</span>
+                            <span class="flagged-time">{{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+
+                        <div class="flagged-content-grid">
+                            <!-- Column 1: Draft Details -->
+                            <div class="col-draft">
+                                <h3>Proposed Resource Record</h3>
+                                <p class="draft-title"><strong>Title:</strong> {{ draft.get('title') }}</p>
+                                <p><strong>Category:</strong> <span class="badge badge-category badge-{{ draft.get('category') }}">{{ draft.get('category') }}</span></p>
+                                <p><strong>Extracted Deadline:</strong> {{ draft.get('deadline') or 'None detected' }}</p>
+                                <p><strong>Target URL:</strong> <a href="{{ draft.get('url') }}" target="_blank">{{ draft.get('url') }}</a></p>
+                                <p class="draft-desc"><strong>Description:</strong> {{ draft.get('description') }}</p>
+                            </div>
+
+                            <!-- Column 2: Agent 2 Audit Reason -->
+                            <div class="col-audit">
+                                <h3>Agent 2 (Review Agent) Audit Findings</h3>
+                                <div class="audit-reason-box">
+                                    <p>{{ item.reason or "No specific audit text provided." }}</p>
+                                </div>
+
+                                <details class="raw-agent1-details">
+                                    <summary>View Agent 1 Raw Output Log</summary>
+                                    <pre><code>{{ item.agent1_output }}</code></pre>
+                                </details>
+
+                                <!-- Human Decision Actions -->
+                                <div class="review-actions-form">
+                                    <form action="{{ url_for('proposal_action', audit_id=item.id) }}" method="POST" class="action-form">
+                                        <input type="hidden" name="verdict" value="accept">
+                                        <input type="hidden" name="reason" value="Human administrator approved this proposal.">
+                                        <button type="submit" class="btn btn-success">
+                                            ✅ Approve & Publish to Students
+                                        </button>
+                                    </form>
+
+                                    <form action="{{ url_for('proposal_action', audit_id=item.id) }}" method="POST" class="action-form">
+                                        <input type="hidden" name="verdict" value="reject">
+                                        <input type="hidden" name="reason" value="Human administrator rejected this proposal.">
+                                        <button type="submit" class="btn btn-danger">
+                                            ❌ Reject & Discard
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-admin-queue">
+                <span class="icon-check">✅</span>
+                <h3>Review queue is completely clear!</h3>
+                <p>All extracted notices have been processed, verified, and audited by Agent 2.</p>
+            </div>
+        {% endif %}
+    </section>
+
+    <!-- Section 2: Dual-Agent Notice Simulator (For live viva/presentation demos!) -->
+    <section class="admin-section demo-simulator-box">
+        <div class="section-title-wrap">
+            <h2>🧪 Live Dual-Agent Notice Simulator</h2>
+            <p>Paste any raw unformatted notice to see <strong>Agent 1</strong> structure it and <strong>Agent 2</strong> audit it live.</p>
+        </div>
+
+        <!-- Quick Demo Presets -->
+        <div class="demo-presets">
+            <span class="preset-label">Quick Test Scenarios:</span>
+            <button type="button" class="btn-preset" onclick="loadPreset('new_internship')">1. New Internship (Valid)</button>
+            <button type="button" class="btn-preset" onclick="loadPreset('expired_notice')">2. Past Exam (Expired Date)</button>
+            <button type="button" class="btn-preset" onclick="loadPreset('suspicious_link')">3. Malformed Link (Flag Test)</button>
+        </div>
+
+        <form action="{{ url_for('simulate_notice') }}" method="POST" class="simulator-form" id="simForm">
+            <div class="form-group">
+                <label for="simTitle">Raw Notice Headline / Title:</label>
+                <input type="text" id="simTitle" name="title" class="form-control" placeholder="e.g. Remedial Exam fee payment circular for CSE students" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-half">
+                    <label for="simDate">Raw Date String:</label>
+                    <input type="text" id="simDate" name="raw_date" class="form-control" placeholder="e.g. 25-11-2026 or Dec 15, 2026">
+                </div>
+                <div class="form-group col-half">
+                    <label for="simUrl">Source or Application URL:</label>
+                    <input type="text" id="simUrl" name="url" class="form-control" placeholder="https://hub.rgukt.ac.in/notices/sample">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="simDesc">Raw Body Text / Description:</label>
+                <textarea id="simDesc" name="description" rows="3" class="form-control" placeholder="Paste unformatted message or circular text here..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                🤖 Submit to Dual-Agent Pipeline
+            </button>
+        </form>
+    </section>
+
+    <!-- Section 3: Full Audit Trail Table -->
+    <section class="admin-section">
+        <div class="section-title-wrap">
+            <h2>📜 Full Audit Log & AI Decision History</h2>
+            <p>Transparency log showing decisions made by Agent 1 and Agent 2.</p>
+        </div>
+
+        <div class="table-responsive">
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Proposed Action</th>
+                        <th>Resource Title</th>
+                        <th>Agent 2 Verdict</th>
+                        <th>Audit Justification</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in all_proposals %}
+                        {% set d = p.draft_json | parse_json %}
+                        <tr>
+                            <td>#{{ p.id }}</td>
+                            <td>
+                                <span class="badge badge-action badge-{{ p.action }}">{{ p.action }}</span>
+                            </td>
+                            <td class="table-title"><strong>{{ d.get('title', 'Unknown') }}</strong></td>
+                            <td>
+                                {% if p.agent2_verdict == 'accept' %}
+                                    <span class="badge badge-verdict-accept">ACCEPT</span>
+                                {% elif p.agent2_verdict == 'reject' %}
+                                    <span class="badge badge-verdict-reject">REJECT</span>
+                                {% elif p.agent2_verdict == 'flag' %}
+                                    <span class="badge badge-verdict-flag">FLAG</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">PENDING</span>
+                                {% endif %}
+                            </td>
+                            <td class="table-reason">{{ p.reason or "Processed automatically" }}</td>
+                            <td class="table-time">{{ p.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Test preset loader for quick viva demo
+function loadPreset(type) {
+    const titleInput = document.getElementById('simTitle');
+    const dateInput = document.getElementById('simDate');
+    const urlInput = document.getElementById('simUrl');
+    const descInput = document.getElementById('simDesc');
+
+    if (type === 'new_internship') {
+        titleInput.value = "Amazon Web Services (AWS) Cloud Intern - Summer 2027";
+        dateInput.value = "2026-12-18";
+        urlInput.value = "https://amazon.jobs/university/cloud-intern";
+        descInput.value = "Eligibility: CSE/ECE students with 7.5+ CGPA. Stipend: 1,10,000 INR/month. Online assessment in December.";
+    } else if (type === 'expired_notice') {
+        titleInput.value = "Mid-Term Examination Re-evaluation Grievance Portal";
+        dateInput.value = "2026-01-10"; // Past date
+        urlInput.value = "https://hub.rgukt.ac.in/academic/grievance";
+        descInput.value = "Submit subject re-verification requests. Last date was strictly Jan 10, 2026.";
+    } else if (type === 'suspicious_link') {
+        titleInput.value = "Work From Home Part-Time Student Data Entry";
+        dateInput.value = "2026-11-30";
+        urlInput.value = "ftp://bad-link-without-secure-http";
+        descInput.value = "Click here to claim free lottery job without interview. Earn 50,000 working 1 hour daily.";
+    }
+}
+
+// Interactive Pipeline Trigger
+function triggerScrapePipeline() {
+    const banner = document.getElementById('pipelineStatusBanner');
+    const btn = document.getElementById('btnRunPipeline');
+    
+    banner.style.display = 'flex';
+    btn.disabled = true;
+    btn.innerText = 'Processing Dual-Agent Pipeline...';
+
+    fetch('/api/pipeline/run-now', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'success') {
+            document.getElementById('statusTitle').innerText = 'Pipeline Complete!';
+            document.getElementById('statusMsg').innerText = `Scraped ${data.extracted_count} sources and ran dual-agent review. Reloading page...`;
+            setTimeout(() => { window.location.reload(); }, 1200);
+        } else {
+            alert('Pipeline failed: ' + data.message);
+            banner.style.display = 'none';
+            btn.disabled = false;
+            btn.innerText = '⚡ Run Web Scraper & Dual-Agent Pipeline Now';
+        }
+    })
+    .catch(err => {
+        alert('Network error: ' + err);
+        banner.style.display = 'none';
+        btn.disabled = false;
+        btn.innerText = '⚡ Run Web Scraper & Dual-Agent Pipeline Now';
+    });
+}
+</script>
+{% endblock %}

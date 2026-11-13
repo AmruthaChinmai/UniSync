@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}UniSync - Student Information & Opportunities Platform{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <span class="hero-badge">AI-Maintained Knowledge & Opportunities Hub</span>
+            <h1>One single place for study resources, jobs & campus notices.</h1>
+            <p class="hero-desc">
+                UniSync continuously monitors, discovers, and verifies student resources with dual-agent intelligence so deadlines and details stay fresh.
+            </p>
+
+            <!-- Search Form -->
+            <form action="{{ url_for('index') }}" method="GET" class="search-form">
+                <input type="hidden" name="category" value="{{ selected_category }}">
+                <div class="search-input-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input 
+                        type="text" 
+                        name="q" 
+                        value="{{ search_query }}" 
+                        placeholder="Search for exam timetables, notes, internships, hackathons..."
+                        class="search-input"
+                    >
+                    {% if search_query %}
+                        <a href="{{ url_for('index', category=selected_category) }}" class="search-clear">&times;</a>
+                    {% endif %}
+                </div>
+                <button type="submit" class="btn btn-primary">Search</button>
+            </form>
+        </div>
+
+        <!-- Metric Badges -->
+        <div class="hero-stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.total }}</div>
+                <div class="stat-label">Active Resources</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.opportunity }}</div>
+                <div class="stat-label">Jobs & Internships</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ stats.academic }}</div>
+                <div class="stat-label">Study Materials</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Category Filters -->
+    <section class="filters-section">
+        <div class="filter-tabs">
+            <a href="{{ url_for('index', category='all', q=search_query) }}" 
+               class="filter-pill {% if selected_category == 'all' or not selected_category %}active{% endif %}">
+                🌐 All Items ({{ stats.total }})
+            </a>
+            <a href="{{ url_for('index', category='academic', q=search_query) }}" 
+               class="filter-pill {% if selected_category == 'academic' %}active{% endif %}">
+                📚 Academics & Notes ({{ stats.academic }})
+            </a>
+            <a href="{{ url_for('index', category='opportunity', q=search_query) }}" 
+               class="filter-pill {% if selected_category == 'opportunity' %}active{% endif %}">
+                🚀 Opportunities & Jobs ({{ stats.opportunity }})
+            </a>
+            <a href="{{ url_for('index', category='campus', q=search_query) }}" 
+               class="filter-pill {% if selected_category == 'campus' %}active{% endif %}">
+                🏛️ Campus Notices ({{ stats.campus }})
+            </a>
+        </div>
+    </section>
+
+    <!-- Resources Listing Grid -->
+    <section class="resources-section">
+        {% if resources %}
+            <div class="resources-grid">
+                {% for item in resources %}
+                    {% set days = item.deadline | days_left %}
+                    <article class="resource-card category-{{ item.category }}">
+                        <div class="card-header">
+                            <span class="badge badge-category badge-{{ item.category }}">
+                                {% if item.category == 'academic' %}📚 Academic
+                                {% elif item.category == 'opportunity' %}💼 Opportunity
+                                {% else %}📢 Campus{% endif %}
+                            </span>
+
+                            <!-- Deadline Badge -->
+                            {% if item.deadline %}
+                                {% if days is not none and days < 0 %}
+                                    <span class="badge badge-deadline badge-expired">Expired</span>
+                                {% elif days == 0 %}
+                                    <span class="badge badge-deadline badge-urgent">Due Today!</span>
+                                {% elif days == 1 %}
+                                    <span class="badge badge-deadline badge-urgent">Due Tomorrow</span>
+                                {% elif days is not none and days <= 5 %}
+                                    <span class="badge badge-deadline badge-warning">{{ days }} days left</span>
+                                {% else %}
+                                    <span class="badge badge-deadline badge-normal">{{ days }} days left</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge badge-deadline badge-open">Always Open</span>
+                            {% endif %}
+                        </div>
+
+                        <h2 class="card-title">
+                            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">
+                                {{ item.title }}
+                            </a>
+                        </h2>
+
+                        <p class="card-desc">
+                            {{ item.description or "No detailed description provided." }}
+                        </p>
+
+                        <div class="card-meta">
+                            <div class="meta-item">
+                                <span class="meta-label">Deadline:</span>
+                                <span class="meta-value">{{ item.deadline | format_date }}</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">AI Checked:</span>
+                                <span class="meta-value" title="{{ item.last_checked.strftime('%Y-%m-%d %H:%M:%S') }}">
+                                    {{ item.last_checked.strftime('%b %d, %H:%M') }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="card-footer">
+                            <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-card-apply">
+                                View / Apply Now ↗
+                            </a>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📂</div>
+                <h3>No resources found</h3>
+                <p>No listings matched your current filters or search query.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Clear All Filters</a>
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

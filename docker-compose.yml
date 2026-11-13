@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # MySQL Database Service (matches Slide 08: MySQL Database)
+  db:
+    image: mysql:8.0
+    container_name: unisync_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: unisync
+      MYSQL_USER: unisync_user
+      MYSQL_PASSWORD: unisync_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # UniSync Web Application Service
+  web:
+    build: .
+    container_name: unisync_app
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=mysql+pymysql://unisync_user:unisync_pass@db:3306/unisync
+      - SECRET_KEY=unisync-production-secret-key-2026
+      - PORT=5000
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+
+volumes:
+  mysql_data:

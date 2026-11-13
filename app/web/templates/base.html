@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}UniSync - AI-Maintained Student Information Platform{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Google Fonts for clean modern typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="top-nav">
+        <div class="nav-container">
+            <a href="{{ url_for('index') }}" class="brand-logo">
+                <span class="brand-icon">⚡</span>
+                <span class="brand-name">UniSync</span>
+                <span class="badge-campus">RGUKT Basar</span>
+            </a>
+
+            <nav class="nav-links">
+                <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+                    🎓 Student Portal
+                </a>
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item nav-admin {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                    🛡️ Admin & AI Review
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Flash Notifications -->
+    <div class="container message-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <span class="alert-text">{{ message }}</span>
+                        <button class="alert-close" onclick="this.parentElement.remove();">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Page Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Platform Footer -->
+    <footer class="footer">
+        <div class="container footer-content">
+            <div class="footer-info">
+                <h3>UniSync · AI-Maintained Student Information Platform</h3>
+                <p>Designed to reduce manual effort by using an AI Discovery Agent assisted by a supervisory AI Review Agent.</p>
+                <p class="rgukt-tag">Department of Computer Science and Engineering, RGUKT Basar</p>
+            </div>
+            <div class="footer-team">
+                <strong>Project Team:</strong>
+                <ul>
+                    <li>Mohammad Tahaziba Naz (B220472)</li>
+                    <li>Banoth Amrutha Chinmai (B221376)</li>
+                    <li>B. Swapnika (B221702)</li>
+                </ul>
+                <p class="guide">Guide: <strong>Mr. R. Rahul</strong></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
